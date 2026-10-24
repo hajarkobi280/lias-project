@@ -1,0 +1,30 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import MembresPage from './MembresPage';
+import api from '../services/api';
+vi.mock('../services/api', () => ({default:{get:vi.fn(),put:vi.fn()}}));
+afterEach(cleanup);
+it('envoie uniquement le nouveau rôle choisi par le directeur, sans ancien alias', async () => {
+ const membre={id:2,prenom:'Test',nom:'Role',email:'role@example.com',statutScientifique:'PERMANENT',roleGouvernance:'MEMBRE_EQUIPE',equipeNom:'TEST'};
+ api.get.mockResolvedValue({data:[membre]});api.put.mockResolvedValue({data:{...membre,roleGouvernance:'CHEF_EQUIPE'}});
+ render(<MembresPage user={{role:'DIRECTEUR',statut:'PERMANENT'}}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Modifier',exact:true}));
+ fireEvent.change(screen.getByLabelText('Rôle'),{target:{value:'CHEF_EQUIPE'}});
+ fireEvent.click(screen.getByRole('button',{name:'Enregistrer'}));
+ await waitFor(()=>expect(api.put).toHaveBeenCalledWith('/membres/2',expect.objectContaining({roleInitial:'CHEF_EQUIPE',equipeNom:'TEST'})));
+ const payload=api.put.mock.calls.at(-1)[1];
+ expect(payload).not.toHaveProperty('roleGouvernance');expect(payload).not.toHaveProperty('statutScientifique');
+});
+it('ouvre le profil sur demande et transmet la suppression de photo après sauvegarde', async () => {
+ const membre={id:1,prenom:'Test',nom:'Membre',email:'test@example.com',photoUrl:'https://example.com/photo.jpg'};
+ api.get.mockImplementation(url=>Promise.resolve({data:url==='/membres'?[membre]:{membre}}));
+ api.put.mockResolvedValue({data:membre});
+ const saved=vi.fn();
+ render(<MembresPage user={{role:'MEMBRE_EQUIPE',statut:'PERMANENT'}} profilRequest={1} onProfileSaved={saved}/>);
+ expect(await screen.findByAltText('Aperçu du profil')).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Mon profil'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Retirer la photo'}));
+ fireEvent.click(screen.getByRole('button',{name:'Enregistrer'}));
+ await waitFor(()=>expect(saved).toHaveBeenCalledWith({nom:'Membre',prenom:'Test',photoUrl:''}));
+ expect(api.put).toHaveBeenCalledWith('/membres/mon-profil',expect.objectContaining({photoUrl:''}));
+});

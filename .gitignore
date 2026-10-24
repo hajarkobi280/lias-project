@@ -1,0 +1,22 @@
+# Frontend
+lias-frontend/node_modules/
+lias-frontend/dist/
+lias-frontend/build/
+lias-frontend/.env.local
+lias-frontend/.env
+
+# Backend
+lias-backend/target/
+lias-backend/.idea/
+lias-backend/.mvn/
+lias-backend/*.class
+lias-backend/*.jar
+
+# Éléments système ou IDE
+.DS_Store
+.vscode/
+.idea/
+*.log
+# Données locales
+lias-backend/data/
+lias-backend/uploads/
